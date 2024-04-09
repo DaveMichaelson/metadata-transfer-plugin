@@ -1,21 +1,21 @@
 cmake_minimum_required(VERSION 3.13.4)
-project(clang-tutor)
+project(metadata-transfer)
 
 #===============================================================================
 # 1. VERIFY CLANG INSTALLATION DIR
 #===============================================================================
 # Set this to a valid Clang installation dir
 #set(CT_LLVM_INSTALL_DIR "" CACHE PATH "LLVM installation directory")
-set(CT_LLVM_INSTALL_DIR "~/GitRepos/forked-llvm/debninjabuild")
+set(CT_LLVM_INSTALL_DIR "/shared/scratch/2018/dav.seehaus/GitRepos/forked-llvm/relninjabuild")
 
 # A bit of a sanity checking
-set(CT_LLVM_INCLUDE_DIR "${CT_LLVM_INSTALL_DIR}/include/llvm-19")
+set(CT_LLVM_INCLUDE_DIR "${CT_LLVM_INSTALL_DIR}/include/llvm")
 if(NOT EXISTS "${CT_LLVM_INCLUDE_DIR}")
 message(FATAL_ERROR
   " CT_LLVM_INSTALL_DIR (${CT_LLVM_INCLUDE_DIR}) is invalid.")
 endif()
 
-set(CT_LLVM_CMAKE_FILE "${CT_LLVM_INSTALL_DIR}/lib/cmake/clang-19/ClangConfig.cmake")
+set(CT_LLVM_CMAKE_FILE "${CT_LLVM_INSTALL_DIR}/lib/cmake/clang/ClangConfig.cmake")
 if(NOT EXISTS "${CT_LLVM_CMAKE_FILE}")
 message(FATAL_ERROR
   " CT_LLVM_CMAKE_FILE (${CT_LLVM_CMAKE_FILE}) is invalid.")
@@ -27,17 +27,10 @@ set(LLVM_LINK_COMPONENTS
 # 2. LOAD CLANG CONFIGURATION
 #    For more: http://llvm.org/docs/CMake.html#embedding-llvm-in-your-project
 #===============================================================================
-list(APPEND CMAKE_PREFIX_PATH "${CT_LLVM_INSTALL_DIR}/lib/cmake/llvm-10/")
-list(APPEND CMAKE_PREFIX_PATH "${CT_LLVM_INSTALL_DIR}/lib/cmake/clang-10/")
+list(APPEND CMAKE_PREFIX_PATH "${CT_LLVM_INSTALL_DIR}/lib/cmake/llvm/")
+list(APPEND CMAKE_PREFIX_PATH "${CT_LLVM_INSTALL_DIR}/lib/cmake/clang/")
 
 find_package(Clang REQUIRED CONFIG)
-
-# Sanity check. As Clang does not expose e.g. `CLANG_VERSION_MAJOR` through
-# AddClang.cmake, we have to use LLVM_VERSION_MAJOR instead.
-# TODO: Revisit when next version is released.
-if(NOT "19" VERSION_EQUAL "${LLVM_VERSION_MAJOR}")
-  message(FATAL_ERROR "Found LLVM ${LLVM_VERSION_MAJOR}, but need LLVM 10")
-endif()
 
 message(STATUS "Found Clang ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using ClangConfig.cmake in: ${CT_LLVM_INSTALL_DIR}")
@@ -54,7 +47,8 @@ include_directories(SYSTEM "${LLVM_INCLUDE_DIRS};${CLANG_INCLUDE_DIRS}")
 # 3. CLANG-TUTOR BUILD CONFIGURATION
 #===============================================================================
 # Use the same C++ standard as LLVM does
-set(CMAKE_CXX_STANDARD 19 CACHE STRING "")
+
+set(CMAKE_CXX_STANDARD 26 CACHE STRING "")
 
 # Build type
 if (NOT CMAKE_BUILD_TYPE)
@@ -86,9 +80,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
 
 #========================================
 
-add_library(FindClassDecls SHARED FindClassDecls.cpp)
+add_library(AttributeMetadata SHARED AttributeMetadata.cpp)
 
 # Allow undefined symbols in shared objects on Darwin (this is the default
 # behaviour on Linux)
-target_link_libraries(FindClassDecls
+target_link_libraries(AttributeMetadata
   "$<$<PLATFORM_ID:Darwin>:-undefined dynamic_lookup>")
