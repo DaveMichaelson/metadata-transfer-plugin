@@ -10,21 +10,51 @@
 
 using namespace clang;
 
-class AttributeMetadataVisitor
-  : public RecursiveASTVisitor<AttributeMetadataVisitor> {
+class EnumerateBaseClassVisitor 
+  : public RecursiveASTVisitor<EnumerateBaseClassVisitor> {
 public:
-  explicit AttributeMetadataVisitor(ASTContext *Context)
+  explicit EnumerateBaseClassVisitor(ASTContext *Context)
+    : Context(Context) {}
+
+  bool VisitCXXRecordDecl(CXXRecordDecl *D) {
+    llvm::outs() << "Declaration of " << D->Decl::getDeclKindName() << "\n";
+    return true;
+  }
+
+private:
+  ASTContext *Context;
+};
+
+class MarkMacroVisitor
+  : public RecursiveASTVisitor<MarkMacroVisitor> {
+public:
+  explicit MarkMacroVisitor(ASTContext *Context)
     : Context(Context) {}
 
   bool VisitDecl(Decl *D) {
     llvm::outs() << "Declaration of " << D->Decl::getDeclKindName() << "\n";
     D->addAttr(AnnotateAttr::CreateImplicit(
       D->getASTContext(), D->Decl::getDeclKindName(), nullptr, 0));
+
+    if (IsMacro(D)) {
+      MarkMacro(D);
+    }
+    
     return true;
+  }
+
+  bool TraverseStmt(Stmt *S) {
+    if (skip) {
+      return true;
+    }
+    bool result = RecursiveASTVisitor::TraverseStmt(S);
+    skip = false;
+    return result;
   }
 
   bool VisitStmt(Stmt *S) {
     if (IsMacro(S)) {
+      skip = true;
       MarkMacro(S);
     }
     return true;
@@ -36,6 +66,7 @@ public:
 
 private:
   ASTContext *Context;
+  bool skip = false;
 
   template <typename Node>
   bool IsMacro(Node *N) {
@@ -63,18 +94,22 @@ private:
 class AttributeMetadataConsumer : public clang::ASTConsumer {
 public:
   explicit AttributeMetadataConsumer(ASTContext *Context)
-    : Visitor(Context) {}
+    : MacroVisitor(Context), BaseClassVisitor(Context) {}
 
   bool HandleTopLevelDecl(DeclGroupRef DG) override {
     llvm::outs() << "HandleTopLevelDecl" << "\n";
     for (auto D : DG) {
       llvm::outs() << D->getDeclKindName() << "\n";
-      Visitor.TraverseDecl(D);
+      llvm::outs() << "MacroVisitor" << "\n";
+      MacroVisitor.TraverseDecl(D);
+      llvm::outs() << "BaseClassVisitor" << "\n";
+      BaseClassVisitor.TraverseDecl(D);
     }
     return true;
   }
 private:
-  AttributeMetadataVisitor Visitor;
+  MarkMacroVisitor MacroVisitor;
+  EnumerateBaseClassVisitor BaseClassVisitor;
 };
 
 class AttributeMetadataAction : public clang::PluginASTAction {
