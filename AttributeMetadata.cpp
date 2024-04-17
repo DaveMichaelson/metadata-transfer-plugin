@@ -31,18 +31,14 @@ public:
     : Context(Context) {}
 
   bool VisitCallExpr(CallExpr *CE) {
-    if (auto callee = CE->getDirectCallee()) {
-      llvm::outs() << "FPTV : " << callee->getName() << "\n";
-    } else {
-      llvm::outs() << "FPTV : No direct callee\n";
-    }
-    auto Args = CE->getArgs();
+    if (!CE->getCalleeDecl()->isFunctionPointerType())
+      return true;
+    Expr **Args = CE->getArgs();
     std::stringstream FPType;
     llvm::outs() << "FP Type";
     FPType << "(";
     std::vector<std::string> ArgsAsString;
     for(int Iarg = 0; Iarg < CE->getNumArgs(); ++Iarg) {
-      // llvm::outs() << Args[Iarg]->getType().getAsString() << ",";
       ArgsAsString.push_back(Args[Iarg]->getType().getAsString());
     }
     std::copy(ArgsAsString.begin(), ArgsAsString.end(), std::ostream_iterator<std::string>(FPType, ", "));
@@ -83,7 +79,6 @@ public:
     : Context(Context) {}
 
   bool VisitDecl(Decl *D) {
-    // llvm::outs() << "Declaration of " << D->Decl::getDeclKindName() << "\n";
     D->addAttr(AnnotateAttr::CreateImplicit(
       D->getASTContext(), D->Decl::getDeclKindName(), nullptr, 0));
 
