@@ -79,9 +79,6 @@ public:
     : Context(Context) {}
 
   bool VisitDecl(Decl *D) {
-    D->addAttr(AnnotateAttr::CreateImplicit(
-      D->getASTContext(), D->Decl::getDeclKindName(), nullptr, 0));
-
     if (IsMacro(D)) {
       MarkMacro(D);
     }
