@@ -33,18 +33,21 @@ public:
   bool VisitCallExpr(CallExpr *CE) {
     if (!CE->getCalleeDecl()->isFunctionPointerType())
       return true;
-    Expr **Args = CE->getArgs();
+
     std::stringstream FPType;
-    llvm::outs() << "FP Type";
     FPType << "(";
     std::vector<std::string> ArgsAsString;
+    
+    Expr **Args = CE->getArgs();
     for(int Iarg = 0; Iarg < CE->getNumArgs(); ++Iarg) {
       ArgsAsString.push_back(Args[Iarg]->getType().getAsString());
     }
+    
     std::copy(ArgsAsString.begin(), ArgsAsString.end(), std::ostream_iterator<std::string>(FPType, ", "));
     FPType << ") -> " << CE->getType().getAsString();
+    
     attachMetadata(Context, CE, "CallSignature", FPType.str());
-    llvm::outs() << FPType.str() << "\n";
+    
     return true;
   }
 
@@ -59,10 +62,8 @@ public:
     : Context(Context) {}
 
   bool VisitCXXRecordDecl(CXXRecordDecl *D) {
-    // llvm::outs() << "Declaration of " << D->Decl::getDeclKindName() << "\n";
     for (auto base = D->bases_begin(); base != D->bases_end(); ++base) {
       CXXRecordDecl *BaseDecl = base->getType()->getAsCXXRecordDecl();
-      llvm::outs() << "BaseClass=" << BaseDecl->getDeclName().getAsString() << "\n";
       attachMetadata(Context, D, "BaseClass", BaseDecl->getDeclName().getAsString());
     }
     return true;
@@ -90,7 +91,7 @@ public:
     if (skip) {
       return true;
     }
-    bool result = RecursiveASTVisitor::TraverseStmt(S);
+    bool result = RecursiveASTVisitor<MarkMacroVisitor>::TraverseStmt(S);
     skip = false;
     return result;
   }
@@ -125,7 +126,6 @@ private:
   void MarkMacro(Node *N) {
     StringRef MacroName = Lexer::getImmediateMacroName(N->getBeginLoc(), 
       Context->getSourceManager(), Context->getLangOpts());
-    // llvm::outs() << "MacroName=" << MacroName << "\n";
     addMacroNameAsAttribute(N, MacroName);
   }
 
@@ -138,14 +138,9 @@ public:
     FuncPointerVisitor(Context) {}
 
   bool HandleTopLevelDecl(DeclGroupRef DG) override {
-    llvm::outs() << "HandleTopLevelDecl" << "\n";
     for (auto D : DG) {
-      llvm::outs() << D->getDeclKindName() << "\n";
-      llvm::outs() << "MacroVisitor" << "\n";
       MacroVisitor.TraverseDecl(D);
-      llvm::outs() << "BaseClassVisitor" << "\n";
       BaseClassVisitor.TraverseDecl(D);
-      llvm::outs() << "FunctionPointerTypeVisitor" << "\n";
       FuncPointerVisitor.TraverseDecl(D);
     }
     return true;
