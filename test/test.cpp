@@ -70,6 +70,6 @@ int main(int argc, char **argv) {
     testvar = argc;
     int i = 5;
     ASSERT(argc)
-    // [[clang::metadata("CodeMetadata")]]
+    [[clang::metadata("CodeMetadata")]]
     return MAKRO2;
 }
