@@ -1,6 +1,7 @@
 #define ASSERT( x )  if( ( x ) == 0 ) { for( ;; ); };
 #define TESTVAR int testvar = 0;
-#define EXPR_MACRO argc + testvar
+#define SUB_MACRO testvar
+#define EXPR_MACRO argc + SUB_MACRO
 
 TESTVAR
 

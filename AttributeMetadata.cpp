@@ -7,6 +7,7 @@
 #include "clang/Sema/Sema.h"
 #include "clang/AST/Attr.h"
 #include "llvm/IR/Attributes.h"
+#include <algorithm>
 
 using namespace clang;
 
@@ -88,18 +89,19 @@ public:
   }
 
   bool TraverseStmt(Stmt *S) {
-    if (skip) {
-      return true;
-    }
+    MacroStack.push_back("#");
     bool result = RecursiveASTVisitor<MarkMacroVisitor>::TraverseStmt(S);
-    skip = false;
+    while(MacroStack.pop_back_val() != "#");
     return result;
   }
 
   bool VisitStmt(Stmt *S) {
     if (IsMacro(S)) {
-      skip = true;
-      MarkMacro(S);
+      StringRef MacroName = GetMacroName(S);
+      if (std::find(MacroStack.begin(), MacroStack.end(), MacroName) == MacroStack.end()) {
+        MacroStack.push_back(MacroName);
+        MarkMacro(S);
+      }
     }
     return true;
   }
@@ -110,7 +112,7 @@ public:
 
 private:
   ASTContext *Context;
-  bool skip = false;
+  llvm::SmallVector<StringRef, 4> MacroStack;
 
   template <typename Node>
   bool IsMacro(Node *N) {
@@ -120,12 +122,17 @@ private:
   template<typename Node>
   void addMacroNameAsAttribute(Node *N, StringRef MacroName) {
     attachMetadata(Context, N, "MacroName", MacroName);
-  } 
+  }
+
+  template <typename Node>
+  StringRef GetMacroName(Node *N) {
+    return Lexer::getImmediateMacroName(N->getBeginLoc(), 
+      Context->getSourceManager(), Context->getLangOpts());
+  }
 
   template <typename Node>
   void MarkMacro(Node *N) {
-    StringRef MacroName = Lexer::getImmediateMacroName(N->getBeginLoc(), 
-      Context->getSourceManager(), Context->getLangOpts());
+    StringRef MacroName = GetMacroName(N);
     addMacroNameAsAttribute(N, MacroName);
   }
 
