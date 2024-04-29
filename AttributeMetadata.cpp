@@ -8,6 +8,7 @@
 #include "clang/AST/Attr.h"
 #include "llvm/IR/Attributes.h"
 #include <algorithm>
+#include <numeric>
 
 using namespace clang;
 
@@ -40,12 +41,14 @@ public:
     std::vector<std::string> ArgsAsString;
     
     Expr **Args = CE->getArgs();
-    for(int Iarg = 0; Iarg < CE->getNumArgs(); ++Iarg) {
-      ArgsAsString.push_back(Args[Iarg]->getType().getAsString());
+    for(unsigned int Iarg = 0; Iarg < CE->getNumArgs(); ++Iarg) {
+      FPType << Args[Iarg]->getType().getAsString();
+      if (Iarg < CE->getNumArgs() - 1) {
+        FPType << ",";
+      }
     }
     
-    std::copy(ArgsAsString.begin(), ArgsAsString.end(), std::ostream_iterator<std::string>(FPType, ", "));
-    FPType << ") -> " << CE->getType().getAsString();
+    FPType << ")->" << CE->getType().getAsString();
     
     attachMetadata(Context, CE, "CallSignature", FPType.str());
     

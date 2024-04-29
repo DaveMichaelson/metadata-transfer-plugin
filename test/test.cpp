@@ -35,13 +35,23 @@ class Contain {
     Base b;
 };
 
+int calc() {
+    return 5;
+}
+
 int calc(int *a) {
     return *a + *a;
 }
 
+int calc(int *a, int *b) {
+    return *a + *b;
+}
+
 class FunSub : public Contain {};
 
+int (*fun_pointer_void)() = &calc;
 int (*fun_pointer)(int *) = &calc;
+int (*fun_pointer_ii)(int *, int *) = &calc;
 
 int fun(Base *b) {
     return 1;
@@ -67,8 +77,8 @@ int main(int argc, char **argv) {
     B b;
     A *pb = &b;
     C c;
-    testvar = argc;
     int i = 5;
+    testvar = argc + fun_pointer_void() + fun_pointer_ii(&i, &i);
     ASSERT(argc)
     [[clang::metadata("CodeMetadata")]]
     return MAKRO2;
