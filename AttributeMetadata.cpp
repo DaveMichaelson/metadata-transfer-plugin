@@ -38,7 +38,6 @@ public:
 
     std::stringstream FPType;
     FPType << "(";
-    std::vector<std::string> ArgsAsString;
     
     Expr **Args = CE->getArgs();
     for(unsigned int Iarg = 0; Iarg < CE->getNumArgs(); ++Iarg) {
@@ -51,6 +50,24 @@ public:
     FPType << ")->" << CE->getType().getAsString();
     
     attachMetadata(Context, CE, "CallSignature", FPType.str());
+    
+    return true;
+  }
+
+  bool VisitFunctionDecl(FunctionDecl *FD) {
+    std::stringstream FPType;
+    FPType << "(";
+    
+    for(unsigned int Iarg = 0; Iarg < FD->getNumParams(); ++Iarg) {
+      FPType << FD->getParamDecl(Iarg)->getType().getAsString();
+      if (Iarg < FD->getNumParams() - 1) {
+        FPType << ",";
+      }
+    }
+    
+    FPType << ")->" << FD->getReturnType().getAsString();
+    
+    attachMetadata(Context, FD, "CallSignature", FPType.str());
     
     return true;
   }
