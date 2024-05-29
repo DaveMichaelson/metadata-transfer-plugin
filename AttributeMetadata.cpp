@@ -13,16 +13,28 @@
 using namespace clang;
 
 void attachMetadata(ASTContext *Context, Decl *D, StringRef Metadata) {
-  D->addAttr(AnnotateAttr::Create(*Context, Metadata, nullptr, 0));
+  D->addAttr(AnnotateAttr::CreateImplicit(*Context, Metadata, nullptr, 0));
 }
 
 void attachMetadata(ASTContext *Context, Stmt *S, StringRef Metadata) {
-  S->addAttr(*Context, AttachMetadataAttr::Create(*Context, Metadata));
+  S->addAttr(*Context, AttachMetadataAttr::CreateImplicit(*Context, Metadata));
 }
 
 template<typename Node>
 void attachMetadata(ASTContext *Context, Node *N, std::string Kind, StringRef Metadata) {
   attachMetadata(Context, N, Kind + "=" + Metadata.str());
+}
+
+bool isFunctionPointerType(Decl *Decleration) {
+  QualType Ty;
+  if (const auto *D = dyn_cast<ValueDecl>(Decleration))
+    Ty = D->getType();
+  else if (const auto *D = dyn_cast<TypedefNameDecl>(Decleration))
+    Ty = D->getUnderlyingType();
+  else
+    return false;
+  
+  return Ty.getCanonicalType()->isFunctionPointerType();
 }
 
 
@@ -33,7 +45,7 @@ public:
     : Context(Context) {}
 
   bool VisitCallExpr(CallExpr *CE) {
-    if (!CE->getCalleeDecl()->isFunctionPointerType())
+    if (!isFunctionPointerType(CE->getCalleeDecl()))
       return true;
 
     std::stringstream FPType;

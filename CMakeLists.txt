@@ -6,7 +6,7 @@ project(metadata-transfer)
 #===============================================================================
 # Set this to a valid Clang installation dir
 #set(CT_LLVM_INSTALL_DIR "" CACHE PATH "LLVM installation directory")
-set(CT_LLVM_INSTALL_DIR "/shared/2018/dav.seehaus/GitRepos/forked-llvm/relninjabuild")
+set(CT_LLVM_INSTALL_DIR "/shared/scratch/2018/dav.seehaus/GitRepos/llvmversions/16-llvm/build")
 
 # A bit of a sanity checking
 set(CT_LLVM_INCLUDE_DIR "${CT_LLVM_INSTALL_DIR}/include/llvm")
