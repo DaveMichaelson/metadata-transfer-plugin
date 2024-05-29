@@ -47,6 +47,15 @@ int calc(int *a, int *b) {
     return *a + *b;
 }
 
+class Parent1 { virtual int foo(int *i) {return *i;} };
+class Child1a : public Parent1 { virtual int foo(int *i) {return (*i) + 0;} };
+class Child1b : public Parent1 { virtual int foo(int *i) {return (*i) + 1;} };
+class Child1c : public Parent1 { virtual int foo(int *i) {return (*i) + 2;} };
+class Parent2 { virtual int foo(int *i) {return *i;} };
+class Child2a : public Parent2 { virtual int foo(int *i) {return (*i) + 0;} };
+class Child2b : public Parent2 { virtual int foo(int *i) {return (*i) + 1;} };
+class Child2c : public Parent2 { virtual int foo(int *i) {return (*i) + 2;} };
+
 class FunSub : public Contain {};
 
 int (*fun_pointer_void)() = &calc;
@@ -83,3 +92,29 @@ int main(int argc, char **argv) {
     [[clang::metadata("CodeMetadata")]]
     return MAKRO2;
 }
+
+// // bluetooth
+// class Parent1 {
+//     virtual void foo(int a) {};
+// }
+
+// class Child1a : public Parent1;
+// class Child1b : public Parent1;
+// class Child1c : public Parent1;
+
+
+// // virtual file system
+// class Parent2 {
+//     virtual void bar(int a) {};
+// }
+
+// class Child2a : public Parent2;
+// class Child2b : public Parent2;
+// class Child2c : public Parent2;
+
+// void blabla() {
+//     Parent1 = ...
+//     Parent2 = ...
+
+//     foo()
+// }

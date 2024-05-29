@@ -6,6 +6,7 @@
 #include "clang/Frontend/FrontendPluginRegistry.h"
 #include "clang/Sema/Sema.h"
 #include "clang/AST/Attr.h"
+#include "clang/AST/Mangle.h"
 #include "llvm/IR/Attributes.h"
 #include <algorithm>
 #include <numeric>
@@ -45,6 +46,8 @@ public:
     : Context(Context) {}
 
   bool VisitCallExpr(CallExpr *CE) {
+    if (!CE->getCalleeDecl())
+      return true;
     if (!isFunctionPointerType(CE->getCalleeDecl()))
       return true;
 
@@ -92,11 +95,18 @@ class EnumerateBaseClassVisitor
   : public RecursiveASTVisitor<EnumerateBaseClassVisitor> {
 public:
   explicit EnumerateBaseClassVisitor(ASTContext *Context)
-    : Context(Context) {}
+    : Context(Context), NameGenerator(*Context) {}
 
   bool VisitCXXRecordDecl(CXXRecordDecl *D) {
+    if (!D->hasDefinition()) {
+      return true;
+    }
+
     for (auto base = D->bases_begin(); base != D->bases_end(); ++base) {
       CXXRecordDecl *BaseDecl = base->getType()->getAsCXXRecordDecl();
+      if (!BaseDecl) {
+        continue;
+      }
       attachMetadata(Context, D, "BaseClass", BaseDecl->getDeclName().getAsString());
     }
     return true;
@@ -104,6 +114,7 @@ public:
 
 private:
   ASTContext *Context;
+  ASTNameGenerator NameGenerator;
 };
 
 class MarkMacroVisitor
