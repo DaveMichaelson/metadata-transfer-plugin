@@ -95,26 +95,45 @@ class EnumerateBaseClassVisitor
   : public RecursiveASTVisitor<EnumerateBaseClassVisitor> {
 public:
   explicit EnumerateBaseClassVisitor(ASTContext *Context)
-    : Context(Context), NameGenerator(*Context) {}
+    : Context(Context) {}
+
+  std::string computeRecordTypeName(CXXRecordDecl *D) {
+    llvm::SmallString<256> TypeName;
+    llvm::raw_svector_ostream OS(TypeName);
+    OS << D->getKindName() << ".";
+
+    PrintingPolicy Policy = D->getASTContext().getPrintingPolicy();
+    Policy.SuppressInlineNamespace = false;
+
+    if (D->getIdentifier())
+      D->printQualifiedName(OS, Policy);
+    else if (const TypedefNameDecl *TDD = D->getTypedefNameForAnonDecl())
+      TDD->printQualifiedName(OS, Policy);
+    else
+      OS << "anon";
+
+    return OS.str().str();
+  }
 
   bool VisitCXXRecordDecl(CXXRecordDecl *D) {
     if (!D->hasDefinition()) {
       return true;
     }
 
+    attachMetadata(Context, D, "ClassName", computeRecordTypeName(D));
+
     for (auto base = D->bases_begin(); base != D->bases_end(); ++base) {
       CXXRecordDecl *BaseDecl = base->getType()->getAsCXXRecordDecl();
       if (!BaseDecl) {
         continue;
       }
-      attachMetadata(Context, D, "BaseClass", BaseDecl->getDeclName().getAsString());
+      attachMetadata(Context, D, "BaseClass", computeRecordTypeName(BaseDecl));
     }
     return true;
   }
 
 private:
   ASTContext *Context;
-  ASTNameGenerator NameGenerator;
 };
 
 class MarkMacroVisitor
