@@ -8,6 +8,7 @@
 #include "clang/AST/Attr.h"
 #include "clang/AST/Mangle.h"
 #include "llvm/IR/Attributes.h"
+#include "llvm/Support/JSON.h"
 #include <algorithm>
 #include <numeric>
 
@@ -24,6 +25,14 @@ void attachMetadata(ASTContext *Context, Stmt *S, StringRef Metadata) {
 template<typename Node>
 void attachMetadata(ASTContext *Context, Node *N, std::string Kind, StringRef Metadata) {
   attachMetadata(Context, N, Kind + "=" + Metadata.str());
+}
+
+template<typename Node>
+void attachJSONMetadata(ASTContext *Context, Node *N, llvm::json::Object &&Object) {
+  std::string s;
+  llvm::raw_string_ostream os(s);
+  os << llvm::json::Value(std::move(Object));
+  attachMetadata(Context, N, os.str());
 }
 
 bool isFunctionPointerType(Decl *Decleration) {
@@ -119,16 +128,19 @@ public:
     if (!D->hasDefinition()) {
       return true;
     }
-
-    attachMetadata(Context, D, "ClassName", computeRecordTypeName(D));
+    llvm::json::Array array;
 
     for (auto base = D->bases_begin(); base != D->bases_end(); ++base) {
       CXXRecordDecl *BaseDecl = base->getType()->getAsCXXRecordDecl();
       if (!BaseDecl) {
         continue;
       }
-      attachMetadata(Context, D, "BaseClass", computeRecordTypeName(BaseDecl));
+      array.push_back(BaseDecl->getDeclName().getAsString());
     }
+    llvm::json::Object object;
+    object.try_emplace("ClassName", D->getDeclName().getAsString());
+    object.try_emplace("BaseClasses", std::move(array));
+    attachJSONMetadata(Context, D, std::move(object));
     return true;
   }
 
