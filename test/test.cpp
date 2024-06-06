@@ -51,10 +51,10 @@ class Parent1 { virtual int foo(int *i) {return *i;} };
 class Child1a : public Parent1 { virtual int foo(int *i) {return (*i) + 0;} };
 class Child1b : public Parent1 { virtual int foo(int *i) {return (*i) + 1;} };
 class Child1c : public Parent1 { virtual int foo(int *i) {return (*i) + 2;} };
-class Parent2 { virtual int foo(int *i) {return *i;} };
-class Child2a : public Parent2 { virtual int foo(int *i) {return (*i) + 0;} };
-class Child2b : public Parent2 { virtual int foo(int *i) {return (*i) + 1;} };
-class Child2c : public Parent2 { virtual int foo(int *i) {return (*i) + 2;} };
+class Parent2 { virtual int bar(int *i) {return *i;} };
+class Child2a : public Parent2 { virtual int bar(int *i) {return (*i) + 0;} };
+class Child2b : public Parent2 { virtual int bar(int *i) {return (*i) + 1;} };
+class Child2c : public Parent2 { virtual int bar(int *i) {return (*i) + 2;} };
 
 class FunSub : public Contain {};
 

@@ -1,9 +1,9 @@
 
-int calc(int *a) {
+int calc(int const*const a) {
     return *a + *a;
 }
 
-int (*fun_pointer)(int *) = &calc;
+int (*fun_pointer)(int const*const) = &calc;
 
 int main(void) {
     int i = 5;

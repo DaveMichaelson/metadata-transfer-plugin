@@ -54,6 +54,14 @@ public:
   explicit FunctionPointerTypeVisitor(ASTContext *Context) 
     : Context(Context) {}
 
+  template<typename Node>
+  void attachFunctionTypeMetadata(Node *N, llvm::json::Array &TypeList, std::string ReturnType) {
+    llvm::json::Object object;
+    object.try_emplace("ReturnType", ReturnType);
+    object.try_emplace("TypeList", std::move(TypeList));
+    attachJSONMetadata(Context, N, std::move(object));
+  }
+
   bool VisitCallExpr(CallExpr *CE) {
     if (!CE->getCalleeDecl())
       return true;
@@ -64,16 +72,19 @@ public:
     FPType << "(";
     
     Expr **Args = CE->getArgs();
+    llvm::json::Array TypeList;
     for(unsigned int Iarg = 0; Iarg < CE->getNumArgs(); ++Iarg) {
       FPType << Args[Iarg]->getType().getAsString();
+      TypeList.push_back(Args[Iarg]->getType().getAsString());
       if (Iarg < CE->getNumArgs() - 1) {
         FPType << ",";
       }
     }
     
+    attachFunctionTypeMetadata(CE, TypeList, CE->getType().getAsString());
     FPType << ")->" << CE->getType().getAsString();
     
-    attachMetadata(Context, CE, "CallSignature", FPType.str());
+    // attachMetadata(Context, CE, "CallSignature", FPType.str());
     
     return true;
   }
@@ -82,8 +93,10 @@ public:
     std::stringstream FPType;
     FPType << "(";
     
+    llvm::json::Array TypeList;
     for(unsigned int Iarg = 0; Iarg < FD->getNumParams(); ++Iarg) {
       FPType << FD->getParamDecl(Iarg)->getType().getAsString();
+      TypeList.push_back(FD->getParamDecl(Iarg)->getType().getAsString());
       if (Iarg < FD->getNumParams() - 1) {
         FPType << ",";
       }
@@ -91,7 +104,8 @@ public:
     
     FPType << ")->" << FD->getReturnType().getAsString();
     
-    attachMetadata(Context, FD, "CallSignature", FPType.str());
+    attachFunctionTypeMetadata(FD, TypeList, FD->getReturnType().getAsString());
+    // attachMetadata(Context, FD, "CallSignature", FPType.str());
     
     return true;
   }
