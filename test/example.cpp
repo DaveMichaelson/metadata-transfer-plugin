@@ -5,13 +5,13 @@ class Parent { public: int i = 1; };
 
 class Child : public Parent {};
 
-int foo(std::vector<Parent *> &p) {
+int foo(const std::vector<const Parent *> &p) {
     return p[0]->i;
 }
-int (*fun_pointer)(std::vector<Parent*>&) = foo;
+int (*fun_pointer)(const std::vector<const Parent*>&) = foo;
 
 int main(void) {
     Parent *p = new Child();
-    std::vector<Parent *> vp {p};
+    std::vector<const Parent *> vp {p};
     return fun_pointer(vp);
 }

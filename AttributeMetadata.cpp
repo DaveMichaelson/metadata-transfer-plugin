@@ -11,6 +11,7 @@
 #include "llvm/Support/JSON.h"
 #include <algorithm>
 #include <numeric>
+#include <string>
 
 using namespace clang;
 
@@ -25,6 +26,17 @@ void attachMetadata(ASTContext *Context, Stmt *S, StringRef Metadata) {
 template<typename Node>
 void attachMetadata(ASTContext *Context, Node *N, std::string Kind, StringRef Metadata) {
   attachMetadata(Context, N, Kind + "=" + Metadata.str());
+}
+
+std::string getStringFromType(QualType type) {
+  return type.getCanonicalType().getAsString();
+}
+
+void eraseFromString(std::string &S, std::string SubString) {
+  size_t pos = S.find(SubString);
+  if (pos == std::string::npos)
+    return;
+  S.erase(pos, SubString.size());
 }
 
 template<typename Node>
@@ -62,26 +74,38 @@ public:
     attachJSONMetadata(Context, N, std::move(object));
   }
 
+  void attachFunctionTypeMetadataForFunctionDecl(FunctionDecl *N, llvm::json::Array &TypeList, std::string ReturnType) {
+    llvm::json::Object object;
+    object.try_emplace("ReturnType", ReturnType);
+    object.try_emplace("TypeList", std::move(TypeList));
+    attachJSONMetadata(Context, N, std::move(object));
+  }
+
   bool VisitCallExpr(CallExpr *CE) {
-    if (!CE->getCalleeDecl())
-      return true;
-    if (!isFunctionPointerType(CE->getCalleeDecl()))
-      return true;
+    // if (!CE->getCalleeDecl())
+    //   return true;
+    // if (!isFunctionPointerType(CE->getCalleeDecl()))
+    //   return true;
 
     std::stringstream FPType;
     FPType << "(";
     
     Expr **Args = CE->getArgs();
     llvm::json::Array TypeList;
+
+    if (auto MCE = llvm::dyn_cast<CXXMemberCallExpr>(CE)) {
+      TypeList.push_back(MCE->getMethodDecl()->getParent()->getDeclName().getAsString());
+    }
+
     for(unsigned int Iarg = 0; Iarg < CE->getNumArgs(); ++Iarg) {
       FPType << Args[Iarg]->getType().getAsString();
-      TypeList.push_back(Args[Iarg]->getType().getAsString());
+      TypeList.push_back(getStringFromType(Args[Iarg]->getType()));
       if (Iarg < CE->getNumArgs() - 1) {
         FPType << ",";
       }
     }
     
-    attachFunctionTypeMetadata(CE, TypeList, CE->getType().getAsString());
+    attachFunctionTypeMetadata(CE, TypeList, getStringFromType(CE->getType()));
     FPType << ")->" << CE->getType().getAsString();
     
     // attachMetadata(Context, CE, "CallSignature", FPType.str());
@@ -89,24 +113,50 @@ public:
     return true;
   }
 
-  bool VisitFunctionDecl(FunctionDecl *FD) {
-    std::stringstream FPType;
-    FPType << "(";
-    
+  virtual bool VisitFunctionDecl(FunctionDecl *FD) {    
     llvm::json::Array TypeList;
-    for(unsigned int Iarg = 0; Iarg < FD->getNumParams(); ++Iarg) {
-      FPType << FD->getParamDecl(Iarg)->getType().getAsString();
-      TypeList.push_back(FD->getParamDecl(Iarg)->getType().getAsString());
-      if (Iarg < FD->getNumParams() - 1) {
-        FPType << ",";
+
+    if (auto MD = llvm::dyn_cast<CXXMethodDecl>(FD)) {
+      if (MD->isInstance()) {
+        TypeList.push_back(MD->getParent()->getDeclName().getAsString());
       }
     }
+
+    for(unsigned int Iarg = 0; Iarg < FD->getNumParams(); ++Iarg) {
+      TypeList.push_back(getStringFromType(FD->getParamDecl(Iarg)->getType()));
+    }
+        
+    // attachFunctionTypeMetadata(FD, TypeList, getStringFromType(FD->getReturnType()));
+    attachFunctionTypeMetadataForFunctionDecl(FD, TypeList, getStringFromType(FD->getReturnType()));
     
-    FPType << ")->" << FD->getReturnType().getAsString();
+    return true;
+  }
+
+  // bool VisitCXXRecordDecl(CXXRecordDecl *RD) {
+  //   for (auto CD : RD->ctor_range) {
+  //     llvm::outs() << "CTOR: \t" << CD.getDeclName() << "\n";
+  //   }
+  //   return true;
+  // }
+
+  bool VisitCXXConstructExpr(CXXConstructExpr *CE) {    
+    Expr **Args = CE->getArgs();
+    llvm::json::Array TypeList;
     
-    attachFunctionTypeMetadata(FD, TypeList, FD->getReturnType().getAsString());
-    // attachMetadata(Context, FD, "CallSignature", FPType.str());
+    TypeList.push_back(CE->getConstructor()->getParent()->getDeclName().getAsString());
     
+
+    for(unsigned int Iarg = 0; Iarg < CE->getNumArgs(); ++Iarg) {
+      TypeList.push_back(getStringFromType(Args[Iarg]->getType()));
+    }
+    
+    std::string ClassType = getStringFromType(CE->getType());
+    // eraseFromString(ClassType, "class ");
+    // eraseFromString(ClassType, "struct ");
+    if (CE->getConstructor()->isDefaultConstructor()) {
+      ClassType = CE->getConstructor()->getParent()->getDeclName().getAsString();
+    }
+    attachFunctionTypeMetadata(CE, TypeList, ClassType);    
     return true;
   }
 
@@ -230,7 +280,9 @@ class AttributeMetadataConsumer : public clang::ASTConsumer {
 public:
   explicit AttributeMetadataConsumer(ASTContext *Context)
     : MacroVisitor(Context), BaseClassVisitor(Context), 
-    FuncPointerVisitor(Context) {}
+    FuncPointerVisitor(Context) {
+      llvm::outs() << "-------------------PLUGIN CALLED---------------------\n";
+    }
 
   bool HandleTopLevelDecl(DeclGroupRef DG) override {
     for (auto D : DG) {

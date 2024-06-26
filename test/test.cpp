@@ -5,7 +5,7 @@
 
 TESTVAR
 
-class A {
+struct A {
 public:
     virtual int foo() {
         return 5;
@@ -24,7 +24,14 @@ class C {
 };
 
 class Base {
+    virtual int foo() {
+        return 5;
+    }
+public:
     int i;
+    int a;
+    int b;
+    float c;
 };
 
 class Sub : public Base {
@@ -70,10 +77,14 @@ int fun2(Contain *c) {
     return 1;
 }
 
+int nonPointer(Base b) {
+    return b.i;
+}
+
 int main(int argc, char **argv) {
     int (*fun_p_base)(Base *) = &fun;
     int (*fun_p_contain)(Contain *) = &fun2;
-    Sub s;
+    {Sub s;
     Contain contain;
     FunSub fsc;
     class FunSub : public Base{};
@@ -81,7 +92,7 @@ int main(int argc, char **argv) {
     fun_p_base(&s);
     fun_p_contain(&contain);
     fun_p_base(&fs);
-    fun_p_contain(&fsc);
+    fun_p_contain(&fsc);}
     A a;
     B b;
     A *pb = &b;
