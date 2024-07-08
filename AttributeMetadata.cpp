@@ -94,7 +94,7 @@ public:
     llvm::json::Array TypeList;
 
     if (auto MCE = llvm::dyn_cast<CXXMemberCallExpr>(CE)) {
-      TypeList.push_back(MCE->getMethodDecl()->getParent()->getDeclName().getAsString());
+      TypeList.push_back(MCE->getMethodDecl()->getParent()->getDeclName().getAsString() + " *");
     }
 
     for(unsigned int Iarg = 0; Iarg < CE->getNumArgs(); ++Iarg) {
@@ -117,8 +117,11 @@ public:
     llvm::json::Array TypeList;
 
     if (auto MD = llvm::dyn_cast<CXXMethodDecl>(FD)) {
+      std::string suffix = " *";
+      if (llvm::isa<CXXConstructorDecl>(MD))
+        suffix = "";
       if (MD->isInstance()) {
-        TypeList.push_back(MD->getParent()->getDeclName().getAsString());
+        TypeList.push_back(MD->getParent()->getDeclName().getAsString() + suffix);
       }
     }
 
