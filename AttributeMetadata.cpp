@@ -47,18 +47,6 @@ void attachJSONMetadata(ASTContext *Context, Node *N, llvm::json::Object &&Objec
   attachMetadata(Context, N, os.str());
 }
 
-bool isFunctionPointerType(Decl *Decleration) {
-  QualType Ty;
-  if (const auto *D = dyn_cast<ValueDecl>(Decleration))
-    Ty = D->getType();
-  else if (const auto *D = dyn_cast<TypedefNameDecl>(Decleration))
-    Ty = D->getUnderlyingType();
-  else
-    return false;
-  
-  return Ty.getCanonicalType()->isFunctionPointerType();
-}
-
 
 class FunctionPointerTypeVisitor
   : public RecursiveASTVisitor<FunctionPointerTypeVisitor> {
@@ -82,14 +70,6 @@ public:
   }
 
   bool VisitCallExpr(CallExpr *CE) {
-    // if (!CE->getCalleeDecl())
-    //   return true;
-    // if (!isFunctionPointerType(CE->getCalleeDecl()))
-    //   return true;
-
-    std::stringstream FPType;
-    FPType << "(";
-    
     Expr **Args = CE->getArgs();
     llvm::json::Array TypeList;
 
@@ -98,18 +78,11 @@ public:
     }
 
     for(unsigned int Iarg = 0; Iarg < CE->getNumArgs(); ++Iarg) {
-      FPType << Args[Iarg]->getType().getAsString();
       TypeList.push_back(getStringFromType(Args[Iarg]->getType()));
-      if (Iarg < CE->getNumArgs() - 1) {
-        FPType << ",";
-      }
     }
     
     attachFunctionTypeMetadata(CE, TypeList, getStringFromType(CE->getType()));
-    FPType << ")->" << CE->getType().getAsString();
-    
-    // attachMetadata(Context, CE, "CallSignature", FPType.str());
-    
+        
     return true;
   }
 
@@ -117,8 +90,10 @@ public:
     llvm::json::Array TypeList;
 
     if (auto MD = llvm::dyn_cast<CXXMethodDecl>(FD)) {
+      // add this suffix for the this-pointer
       std::string suffix = " *";
       if (llvm::isa<CXXConstructorDecl>(MD))
+        // this is suffix is not needed for constructor calls
         suffix = "";
       if (MD->isInstance()) {
         TypeList.push_back(MD->getParent()->getDeclName().getAsString() + suffix);
@@ -129,18 +104,10 @@ public:
       TypeList.push_back(getStringFromType(FD->getParamDecl(Iarg)->getType()));
     }
         
-    // attachFunctionTypeMetadata(FD, TypeList, getStringFromType(FD->getReturnType()));
     attachFunctionTypeMetadataForFunctionDecl(FD, TypeList, getStringFromType(FD->getReturnType()));
     
     return true;
   }
-
-  // bool VisitCXXRecordDecl(CXXRecordDecl *RD) {
-  //   for (auto CD : RD->ctor_range) {
-  //     llvm::outs() << "CTOR: \t" << CD.getDeclName() << "\n";
-  //   }
-  //   return true;
-  // }
 
   bool VisitCXXConstructExpr(CXXConstructExpr *CE) {    
     Expr **Args = CE->getArgs();
@@ -154,8 +121,6 @@ public:
     }
     
     std::string ClassType = getStringFromType(CE->getType());
-    // eraseFromString(ClassType, "class ");
-    // eraseFromString(ClassType, "struct ");
     if (CE->getConstructor()->isDefaultConstructor()) {
       ClassType = CE->getConstructor()->getParent()->getDeclName().getAsString();
     }
@@ -172,24 +137,6 @@ class EnumerateBaseClassVisitor
 public:
   explicit EnumerateBaseClassVisitor(ASTContext *Context)
     : Context(Context) {}
-
-  std::string computeRecordTypeName(CXXRecordDecl *D) {
-    llvm::SmallString<256> TypeName;
-    llvm::raw_svector_ostream OS(TypeName);
-    OS << D->getKindName() << ".";
-
-    PrintingPolicy Policy = D->getASTContext().getPrintingPolicy();
-    Policy.SuppressInlineNamespace = false;
-
-    if (D->getIdentifier())
-      D->printQualifiedName(OS, Policy);
-    else if (const TypedefNameDecl *TDD = D->getTypedefNameForAnonDecl())
-      TDD->printQualifiedName(OS, Policy);
-    else
-      OS << "anon";
-
-    return OS.str().str();
-  }
 
   bool VisitCXXRecordDecl(CXXRecordDecl *D) {
     if (!D->hasDefinition()) {
