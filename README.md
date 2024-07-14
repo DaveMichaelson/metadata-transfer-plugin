@@ -1,4 +1,22 @@
-# metdata-transfer-plugin
+# metadata-transfer-plugin
+
+Dieses Clang Plugin attribuiert AST-Knoten um Informationen über 
+die Vererbungshierarchie (BaseClassVisitor), Makros (MacroVisitor) und 
+Zeigertypen (FuncPointerVisitor) in die LLVM-IR mittels Metadaten zu übertragen.
+
+## Bauen
+Bevor das Plugin gebaut werden kann muss in `CMakeLists.txt` das Build-Verzeichnis
+vom von mir angepassten LLVM Projekt angegeben werden. Dafür muss die `CT_LLVM_INSTALL_DIR`
+Variable entsprechend gesetzt werden.
+
+Anschließend kann das Plugin mit folgendem Befehl gebaut werden:
+`cmake . && make`
+
+Beim Übersetzen eines Programms kann das Plugin mit der `-fplugin` Option dem `clang`-Aufruf
+mitgegeben werden:
+`-fplugin=lib/libAttributeMetadata.so`
+
+## Reihenfolge der Ausführung
 
 Die ASTMainAction ist die
 Codegenerierung, da das Plugin Attribute hinzufügt, die in der Codegenerierung verarbeitet
